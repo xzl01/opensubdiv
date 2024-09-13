@@ -26,6 +26,17 @@ cmake_minimum_required(VERSION 3.12)
 
 project(OpenSubdiv)
 
+# Set C++ standard requirements, allowing overrides
+if (NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 14)
+endif()
+if (NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+if (NOT DEFINED CMAKE_CXX_EXTENSIONS)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
+
 # Turn on folder support
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -121,8 +132,8 @@ if (MAIN_PROJECT)
 endif()
 
 # Specify the list of directories to search for cmake modules.
-set(CMAKE_MODULE_PATH
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+list(APPEND CMAKE_MODULE_PATH
+    "${PROJECT_SOURCE_DIR}/cmake"
 )
 
 #-------------------------------------------------------------------------------
@@ -169,6 +180,15 @@ if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANGCC OR CMAKE_COMPILER_IS_IC
         list(APPEND OSD_COMPILER_FLAGS -w2 -wd1572 -wd1418 -wd981 -wd383 -wd193 -wd444)
     else()
         list(APPEND OSD_COMPILER_FLAGS -Wall -Wextra)
+    endif()
+
+    if(WIN32)
+        # Make sure the constants in <math.h>/<cmath> get defined.
+        list(APPEND OSD_COMPILER_FLAGS -D_USE_MATH_DEFINES)
+
+        # Make sure WinDef.h does not define min and max macros which
+        # will conflict with std::min() and std::max().
+        list(APPEND OSD_COMPILER_FLAGS -DNOMINMAX)
     endif()
 
     # HBR uses the offsetof macro on a templated struct, which appears
@@ -221,9 +241,6 @@ if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANGCC OR CMAKE_COMPILER_IS_IC
     endif()
 
 elseif(MSVC)
-
-    # Turn on all warnings
-    list(APPEND OSD_COMPILER_FLAGS /Wall)
 
     list(APPEND OSD_COMPILER_FLAGS
                     /W3     # Use warning level recommended for production purposes.
@@ -336,7 +353,7 @@ if(NOT NO_OMP)
     find_package(OpenMP)
 endif()
 if(NOT NO_TBB)
-    find_package(TBB 4.0)
+    find_package(TBB 2018 COMPONENTS tbb)
 endif()
 if (NOT NO_OPENGL)
     find_package(OpenGL)
@@ -429,20 +446,14 @@ else()
     if (NOT NO_TBB)
         message(WARNING
             "TBB was not found : support for TBB parallel compute kernels "
-            "will be disabled in Osd.  If your compiler supports TBB "
-            "directives, please refer to the FindTBB.cmake shared module "
-            "in your cmake installation.")
+            "will be disabled in Osd.  If your environment supports TBB, "
+            "please make sure that TBB's CMake config is available in the "
+            "find_package() search path.")
     endif()
 endif()
 
 if( METAL_FOUND AND NOT NO_METAL)
     set(OSD_GPU TRUE)
-    if (CMAKE_COMPILER_IS_CLANGCC)
-        # When building with Metal support enabled, we need to explicitly
-        # request that the C++ code be compiled with C++11 since some example
-        # code for Metal relies on functionality only available in C++11.
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    endif()
 endif()
 
 if( OPENGL_FOUND AND NOT NO_OPENGL)
@@ -481,17 +492,15 @@ if(GLEW_FOUND AND GLEW_INCLUDE_DIR)
         ${PROJECT_SOURCE_DIR}/glLoader)
     set(OPENGL_LOADER_LIBRARIES
         ${GLEW_LIBRARY}
-        ${OPENGL_gl_LIBRARY}
+        OpenGL::GL
         ${CMAKE_DL_LIBS})
 
 elseif(OPENGL_FOUND)
 
     osd_detect_gl_version(${PROJECT_SOURCE_DIR}/glLoader/glApi.h)
     set(OPENGL_LOADER_INCLUDE_DIRS
-        ${OPENGL_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}/glLoader)
     set(OPENGL_LOADER_LIBRARIES
-        ${OPENGL_gl_LIBRARY}
         ${CMAKE_DL_LIBS})
 
 endif()
@@ -587,10 +596,13 @@ if(CUDA_FOUND)
 
     if (UNIX)
         list( APPEND CUDA_NVCC_FLAGS -Xcompiler -fPIC )
+        # Use OSD_CUDA_NVCC_FLAGS to specify --gpu-architecture or other CUDA
+        # compilation options. The overrides here are only for compatibility
+        # with older OpenSubdiv releases and obsolete CUDA versions.
         if (NOT DEFINED OSD_CUDA_NVCC_FLAGS)
             if (CUDA_VERSION_MAJOR LESS 6)
                 set( OSD_CUDA_NVCC_FLAGS --gpu-architecture compute_11 )
-            else()
+            elseif (CUDA_VERSION_MAJOR LESS 8)
                 set( OSD_CUDA_NVCC_FLAGS --gpu-architecture compute_20 )
             endif()
         endif()
@@ -794,6 +806,11 @@ macro(osd_add_possibly_cuda_executable target folder)
 
     set_target_properties(${target} PROPERTIES FOLDER ${folder})
 
+    # Workaround link dependencies for cuda examples on platforms with GLX
+    if(CUDA_FOUND AND OpenGL_GLX_FOUND)
+        target_link_libraries(${target} OpenGL::GLX)
+    endif()
+
     if(CMAKE_COMPILER_IS_ICC)
         target_link_libraries(${target} ${ICC_LIBRARIES})
     endif()
@@ -837,6 +854,7 @@ endmacro()
 #-------------------------------------------------------------------------------
 # Build targets
 
+include(GNUInstallDirs)
 
 # if you want to build examples against installed OpenSubdiv header files,
 # use OPENSUBDIV_INCLUDE_DIR.
@@ -878,34 +896,31 @@ if (NOT NO_DOC)
     add_subdirectory(documentation)
 endif()
 
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.0.2)
-    #
-    # CMake Config.
-    #
-    include(GNUInstallDirs)
-    include(CMakePackageConfigHelpers)
+#
+# CMake Config.
+#
+include(CMakePackageConfigHelpers)
 
-    set(OPENSUBDIV_CONFIG_PATH "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+set(OPENSUBDIV_CONFIG_PATH "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 
-    configure_package_config_file(
-        opensubdiv-config.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfig.cmake
-        INSTALL_DESTINATION ${OPENSUBDIV_CONFIG_PATH}
-    )
-    write_basic_package_version_file(
-        ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfigVersion.cmake
-        VERSION ${OSD_SONAME}
-        COMPATIBILITY SameMajorVersion
-    )
+configure_package_config_file(
+    opensubdiv-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfig.cmake
+    INSTALL_DESTINATION ${OPENSUBDIV_CONFIG_PATH}
+)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfigVersion.cmake
+    VERSION ${OSD_SONAME}
+    COMPATIBILITY SameMajorVersion
+)
 
-    install(EXPORT opensubdiv-targets
-        NAMESPACE OpenSubdiv::
-        FILE OpenSubdivTargets.cmake
-        DESTINATION ${OPENSUBDIV_CONFIG_PATH})
+install(EXPORT opensubdiv-targets
+    NAMESPACE OpenSubdiv::
+    FILE OpenSubdivTargets.cmake
+    DESTINATION ${OPENSUBDIV_CONFIG_PATH})
 
-    install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfigVersion.cmake
-        DESTINATION ${OPENSUBDIV_CONFIG_PATH}
-    )
-endif()
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/OpenSubdivConfigVersion.cmake
+    DESTINATION ${OPENSUBDIV_CONFIG_PATH}
+)

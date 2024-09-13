@@ -1,3 +1,23 @@
+opensubdiv (3.6.0-2) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Mon, 17 Jun 2024 20:57:37 +0200
+
+opensubdiv (3.6.0-1) experimental; urgency=medium
+
+  [ Debian Janitor ]
+  * debian/: fix some issues reported by lintian
+    - set secure URI in Homepage field
+    - set upstream metadata fields
+
+  [ Matteo F. Vescovi ]
+  * New upstream release
+  * debian/: SONAME bump 3.5.0 -> 3.6.0
+  * debian/control: S-V bump 4.6.1 -> 4.6.2 (no changes needed)
+
+ -- Matteo F. Vescovi <mfv@debian.org>  Sat, 06 Jan 2024 15:18:14 +0100
+
 opensubdiv (3.5.0-2) unstable; urgency=medium
 
   * Upload to unstable

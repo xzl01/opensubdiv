@@ -98,6 +98,7 @@ if (DOCUTILS_FOUND AND Python_Interpreter_FOUND)
         release_33.rst
         release_34.rst
         release_35.rst
+        release_36.rst
         release_notes.rst
         release_notes_2x.rst
         sdc_overview.rst
@@ -269,7 +270,10 @@ if (DOCUTILS_FOUND AND Python_Interpreter_FOUND)
                 -E copy "${infile}" "${outfile}"
         )
 
-        add_custom_target( ${src} DEPENDS "${outfile}")
+        # Exclude generated search.html
+        if (NOT ${src} STREQUAL "search.html")
+            add_custom_target( ${src} DEPENDS "${outfile}")
+        endif()
 
         list(APPEND HTML_TARGETS ${src})
 

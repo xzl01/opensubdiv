@@ -25,12 +25,12 @@ Build-Depends-Indep:
  python3-docutils,
  python3-pygments
 Rules-Requires-Root: no
-Standards-Version: 4.6.1
-Homepage: http://graphics.pixar.com/opensubdiv/
+Standards-Version: 4.6.2
+Homepage: https://graphics.pixar.com/opensubdiv/
 Vcs-Git: https://salsa.debian.org/multimedia-team/opensubdiv.git
 Vcs-Browser: https://salsa.debian.org/multimedia-team/opensubdiv
 
-Package: libosdcpu3.5.0
+Package: libosdcpu3.6.0
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -48,7 +48,7 @@ Description: high performance subdivision surface (subdiv) library - CPU runtime
  .
  This package provides the CPU-based runtime library.
 
-Package: libosdgpu3.5.0
+Package: libosdgpu3.6.0
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -71,8 +71,8 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends:
- libosdcpu3.5.0 (= ${binary:Version}),
- libosdgpu3.5.0 (= ${binary:Version}),
+ libosdcpu3.6.0 (= ${binary:Version}),
+ libosdgpu3.6.0 (= ${binary:Version}),
  ${misc:Depends}
 Description: high performance subdivision surface (subdiv) library - development
  OpenSubdiv is a set of open source libraries that implement high

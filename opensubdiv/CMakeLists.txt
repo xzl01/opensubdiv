@@ -49,9 +49,8 @@ if (NOT NO_LIB)
     endif()
 
     if( TBB_FOUND )
-        include_directories("${TBB_INCLUDE_DIR}")
         list(APPEND PLATFORM_CPU_LIBRARIES
-            ${TBB_LIBRARIES}
+            TBB::tbb
         )
     endif()
 
@@ -80,7 +79,6 @@ if (NOT NO_LIB)
         list(APPEND PLATFORM_GPU_LIBRARIES
             ${METAL_LIBRARIES}
         )
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
     endif()
 
     if ( OPENCL_FOUND )
@@ -141,6 +139,11 @@ if (NOT NO_LIB)
             FOLDER "opensubdiv"
     )
 
+    target_include_directories(osd_static_cpu
+        INTERFACE
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+
     target_link_libraries(osd_static_cpu
         ${PLATFORM_CPU_LIBRARIES}
     )
@@ -162,6 +165,11 @@ if (NOT NO_LIB)
                 OUTPUT_NAME osdGPU
                 EXPORT_NAME osdGPU_static
                 CLEAN_DIRECT_OUTPUT 1)
+
+        target_include_directories(osd_static_gpu
+            INTERFACE
+                $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        )
 
         target_link_libraries(osd_static_gpu
             ${PLATFORM_CPU_LIBRARIES} ${PLATFORM_GPU_LIBRARIES}
@@ -204,6 +212,11 @@ if (NOT NO_LIB)
                 )
         endif()
 
+        target_include_directories(osd_dynamic_cpu
+            INTERFACE
+                $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        )
+
         target_link_libraries(osd_dynamic_cpu
             ${PLATFORM_CPU_LIBRARIES}
         )
@@ -236,6 +249,11 @@ if (NOT NO_LIB)
                         CLEAN_DIRECT_OUTPUT 1
                     )
             endif()
+
+            target_include_directories(osd_dynamic_gpu
+                INTERFACE
+                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+            )
 
             target_link_libraries(osd_dynamic_gpu
                 osd_dynamic_cpu
@@ -292,7 +310,7 @@ if (NOT NO_LIB)
             $<TARGET_OBJECTS:far_obj>
             $<TARGET_OBJECTS:bfr_obj>
             $<TARGET_OBJECTS:osd_cpu_obj>
-            $<TARGET_OBJECTS:osd_gpu_obj>
+            $<$<TARGET_EXISTS:osd_gpu_obj>:$<TARGET_OBJECTS:osd_gpu_obj>>
             ${OPENGL_LOADER_OBJS}
         )
 
@@ -341,7 +359,7 @@ if (NOT NO_LIB)
                 $<TARGET_OBJECTS:far_obj>
                 $<TARGET_OBJECTS:bfr_obj>
                 $<TARGET_OBJECTS:osd_cpu_obj>
-                $<TARGET_OBJECTS:osd_gpu_obj>
+                $<$<TARGET_EXISTS:osd_gpu_obj>:$<TARGET_OBJECTS:osd_gpu_obj>>
                 ${OPENGL_LOADER_OBJS}
             )
 
